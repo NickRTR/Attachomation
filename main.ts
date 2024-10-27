@@ -1,134 +1,102 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { FileManager, Notice, Plugin, TFile, TFolder } from "obsidian"
+import { AttachomationSettingTab } from "settings"
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface AttachomationSettings {
+	journalFolder: string;
+	attachmentsFolder: string;
+	journalAttachmentsFolder: string;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: AttachomationSettings = {
+	journalFolder: "Journal",
+	attachmentsFolder: "Attachments",
+	journalAttachmentsFolder: "Framework/Attachments/Journal"
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class Attachomation extends Plugin {
+	settings: AttachomationSettings
+	fileManager: FileManager
 
 	async onload() {
-		await this.loadSettings();
+		await this.loadSettings()
+		this.addSettingTab(new AttachomationSettingTab(this.app, this))
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+		this.addRibbonIcon("workflow", "Attachomation", async (evt: MouseEvent) => {
+			await this.attachomation()
+		})
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
+			id: "run-attachomation",
+			name: "Run Attachomation",
+			callback: async () => {
+				await this.attachomation()
 			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+		})
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
-
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		this.fileManager = new FileManager(this.app)
 	}
 
-	onunload() {
-
-	}
+	onunload() {}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
 	}
 
 	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
+		await this.saveData(this.settings)
 	}
 
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
+	async getAttachments(entry: TFile) {
+		const content = await this.app.vault.read(entry)
+		const attachments = content.match(/!\[\[.*\]\]/g) ?? []
+		return attachments
+			.map(attachment => this.app.vault.getAbstractFileByPath(`${this.settings.attachmentsFolder}/${attachment.slice(3, -2)}`))
+			.filter(file => file instanceof TFile)
 	}
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
+	async renameFile(file: TFile, folderPath: string, newFileName: string,) {
+		try {
+			await this.fileManager.renameFile(file, `${folderPath}/${newFileName}`)
+		} catch {
+			new Notice("Created missing folders for attachments.")
+			await this.app.vault.createFolder(folderPath)
+			await this.fileManager.renameFile(file, `${folderPath}/${newFileName}`)
+		}
 	}
 
-	display(): void {
-		const {containerEl} = this;
+	async attachomation() {
+		new Notice("Running Attachomation 🚀")
 
-		containerEl.empty();
+		const journalFolder = this.app.vault.getAbstractFileByPath(this.settings.journalFolder)
+		if (!journalFolder || !(journalFolder instanceof TFolder)) {
+			new Notice("Journal folder not found!")
+			return
+		}
 
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+		const journalEntries = journalFolder.children.filter((entry) => entry instanceof TFile) as TFile[]
+
+		for (const entry of journalEntries) {
+			const attachments = await this.getAttachments(entry)
+
+			const date = new Date(entry.basename.split(".").reverse().join("-"))
+			const month = (date.getMonth() + 1).toString().padStart(2, "0")
+			const monthName = date.toLocaleString("en-US", { month: "long" })
+
+			if (attachments) {
+				for (let i = 0; i < attachments.length; i++) {
+					if (!attachments[i]) return
+					const attachmentCount = attachments.length > 1 ? " " + i + 1 : ""
+					const folderPath = `${this.settings.journalAttachmentsFolder}/${date.getFullYear()}/${month} ${monthName}`
+					const newFileName = `${entry.basename}${attachmentCount}.${attachments[i].extension}`
+					await this.renameFile(attachments[i], folderPath, newFileName)
+				}
+			}
+
+			const folderPath = `${this.settings.journalFolder}/${date.getFullYear()}/${month} ${monthName}`
+			const newFileName = `${entry.basename}.md`
+			await this.renameFile(entry, folderPath, newFileName)
+		}
+
+		new Notice("Attachomation complete ✅")
 	}
 }
