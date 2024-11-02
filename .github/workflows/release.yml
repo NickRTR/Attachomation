@@ -1,31 +1,32 @@
 name: Create Attachomation Release
 
 on:
-	push:
-		tags:
-		- "*"
-	workflow_dispatch:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
 
 jobs:
-	build:
-		runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-		steps:
-		- uses: actions/checkout@v3
-			uses: oven-sh/setup-bun@v2
+    steps:
+      - uses: actions/checkout@v3
 
-		- name: Build plugin
-			run: |
-			bun install
-			bun run build
+      - uses: oven-sh/setup-bun@v2
 
-		- name: Create release
-			env:
-			GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-			run: |
-			tag="${GITHUB_REF#refs/tags/}"
+      - name: Build plugin
+        run: |
+          bun install
+          bun run build
 
-			gh release create "$tag" \
-				--title="$tag" \
-				--draft \
-				main.js manifest.json
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --draft \
+            main.js manifest.json
