@@ -22,7 +22,7 @@ export default class Attachomation extends Plugin {
 		await this.loadSettings()
 		this.addSettingTab(new AttachomationSettingTab(this.app, this))
 
-		this.addRibbonIcon("workflow", "Attachomation", async (evt: MouseEvent) => {
+		this.addRibbonIcon("workflow", "Attachomation", async () => {
 			await this.attachomation()
 		})
 
@@ -47,8 +47,7 @@ export default class Attachomation extends Plugin {
 		await this.saveData(this.settings)
 	}
 
-	async getAttachments(entry: TFile) {
-		const content = await this.app.vault.read(entry)
+	async getAttachments(content: string) {
 		const attachments = content.match(/!\[\[.*\]\]/g) ?? []
 
 		const validAttachments = []
@@ -113,7 +112,11 @@ export default class Attachomation extends Plugin {
         for (const entry of journalEntries) {
             if (!entry.basename.match(/^\d{2}\.\d{2}\.\d{4}$/)) continue
 
-            const attachments = await this.getAttachments(entry)
+			const content = await this.app.vault.read(entry)
+
+			if (content.includes("tp.file.cursor")) continue
+
+            const attachments = await this.getAttachments(content)
 
             const date = new Date(entry.basename.split(".").reverse().join("-"))
             const month = (date.getMonth() + 1).toString().padStart(2, "0")
