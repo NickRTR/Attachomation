@@ -1,5 +1,5 @@
 import { FileManager, Notice, Plugin, TFile, TFolder } from "obsidian"
-import { AttachomationSettingTab } from "src/settings"
+import { AttachomationSettingTab } from "src/settings/settings"
 import { FileApprovalModal } from "src/modals"
 
 interface AttachomationSettings {
@@ -11,7 +11,7 @@ interface AttachomationSettings {
 const DEFAULT_SETTINGS: AttachomationSettings = {
 	journalFolder: "1. Journal",
 	attachmentsFolder: "0. Framework/Attachments",
-	journalAttachmentsFolder: "0. Framework/Attachments/Journal"
+	journalAttachmentsFolder: "0. Framework/Attachments/1. Journal"
 }
 
 export default class Attachomation extends Plugin {
