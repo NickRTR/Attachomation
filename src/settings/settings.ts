@@ -57,5 +57,18 @@ export class AttachomationSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings()
 					})
 			})
+
+		new Setting(containerEl)
+			.setName("Journal Recordings Folder")
+			.setDesc("The folder where recordings for the journal belong.")
+			.addSearch((search) => {
+				new FolderSuggest(this.app, search.inputEl)
+				search.setPlaceholder("Select a folder")
+					.setValue(this.plugin.settings.journalRecordingsFolder)
+					.onChange(async value => {
+						this.plugin.settings.journalRecordingsFolder = folders[value]
+						await this.plugin.saveSettings()
+					})
+			})
 	}
 }

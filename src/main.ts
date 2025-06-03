@@ -6,12 +6,14 @@ interface AttachomationSettings {
 	journalFolder: string;
 	attachmentsFolder: string;
 	journalAttachmentsFolder: string;
+	journalRecordingsFolder: string;
 }
 
 const DEFAULT_SETTINGS: AttachomationSettings = {
 	journalFolder: "1. Journal",
 	attachmentsFolder: "0. Framework/Attachments",
-	journalAttachmentsFolder: "0. Framework/Attachments/1. Journal"
+	journalAttachmentsFolder: "0. Framework/Attachments/1. Journal",
+	journalRecordingsFolder: "0. Framework/Attachments/1. Journal/Recordings"
 }
 
 export default class Attachomation extends Plugin {
@@ -48,25 +50,28 @@ export default class Attachomation extends Plugin {
 	}
 
 	async getAttachments(content: string) {
-		const attachments = content.match(/!\[\[.*\]\]/g) ?? []
+		const files = content.match(/!\[\[.*\]\]/g) ?? []
 
-		const validAttachments = []
-		for (const attachment of attachments) {
+		const attachments = []
+		const recordings = []
+		for (const attachment of files) {
 			const file = this.app.vault.getAbstractFileByPath(`${this.settings.attachmentsFolder}/${attachment.slice(3, -2)}`)
 			if (file instanceof TFile) {
 				if (file.basename.match(/^[A-Za-z]{3}_\d+$/)) {
-					validAttachments.push(file)
-				} else {
+					attachments.push(file)
+				} else if (file.name.match(/^Recording .+\.m4a$/)) {					
+					recordings.push(file)
+				} else {					
 					await new Promise((resolve) => {
 						new FileApprovalModal(this.app, file.name, (approved) => {
-							if (approved) validAttachments.push(file)
+							if (approved) attachments.push(file)
 							resolve(true)
 						}).open()
 					})
 				}
 			}
 		}
-		return validAttachments
+		return {attachments, recordings}
 	}
 
 	async renameFile(file: TFile, folderPath: string, newFileName: string,) {
@@ -106,8 +111,9 @@ export default class Attachomation extends Plugin {
 
         const journalEntries = journalFolder.children.filter((entry) => entry instanceof TFile) as TFile[]
 
-        let managedAttachments = 0
         let managedEntries = 0
+        let managedAttachments = 0
+        let managedRecordings = 0
 
         for (const entry of journalEntries) {
             if (!entry.basename.match(/^\d{2}\.\d{2}\.\d{4}$/)) continue
@@ -116,12 +122,13 @@ export default class Attachomation extends Plugin {
 
 			if (content.includes("tp.file.cursor")) continue
 
-            const attachments = await this.getAttachments(content)
+            const {attachments, recordings} = await this.getAttachments(content)
 
             const date = new Date(entry.basename.split(".").reverse().join("-"))
             const month = (date.getMonth() + 1).toString().padStart(2, "0")
             const monthName = date.toLocaleString("en-US", { month: "long" })
 
+			// handle attachments
             if (attachments) {
                 for (let i = 0; i < attachments.length; i++) {
                     if (!attachments[i]) return
@@ -133,12 +140,25 @@ export default class Attachomation extends Plugin {
                 }
             }
 
+			// handle recordings
+			if (recordings) {
+				for (let i = 0; i < recordings.length; i++) {
+					if (!recordings[i]) return
+					const recordingCount = recordings.length > 1 ? ` ${i + 1}` : ""
+					const folderPath = `${this.settings.journalRecordingsFolder}/${date.getFullYear()}/${month} ${monthName}`
+					const newFileName = `${entry.basename}${recordingCount}.${recordings[i].extension}`
+					const res = await this.renameFile(recordings[i], folderPath, newFileName)
+					if (res === "success") managedRecordings++
+				}
+			}
+
+			// move journal file
             const folderPath = `${this.settings.journalFolder}/${date.getFullYear()}/${month} ${monthName}`
             const newFileName = `${entry.basename}.md`
             const res = await this.renameFile(entry, folderPath, newFileName)
             if (res === "success") managedEntries++
         }
 
-        new Notice(`Attachomation complete ✅\n\nManaged journal entries: ${managedEntries}\nManages attachments: ${managedAttachments}`)
+        new Notice(`Attachomation complete ✅\n\nManaged journal entries: ${managedEntries}\nManaged attachments: ${managedAttachments}\nManaged recordings: ${managedRecordings}`, 10000)
     }
 }
