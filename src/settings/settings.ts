@@ -17,8 +17,6 @@ export class AttachomationSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h1", {text: "Attachomation Settings"})
 
-		const folders = this.plugin.app.vault.getAllFolders().map(folder => folder.path)
-
 		new Setting(this.containerEl)
 			.setName("Journal Folder")
 			.setDesc("The parent folder where your journal entries are stored.")
@@ -27,7 +25,7 @@ export class AttachomationSettingTab extends PluginSettingTab {
 				search.setPlaceholder("Select a folder")
 					.setValue(this.plugin.settings.journalFolder)
 					.onChange(async value => {
-						this.plugin.settings.journalFolder = folders[value]
+						this.plugin.settings.journalFolder = value
 						await this.plugin.saveSettings()
 					})
 			})
@@ -40,7 +38,7 @@ export class AttachomationSettingTab extends PluginSettingTab {
 				search.setPlaceholder("Select a folder")
 					.setValue(this.plugin.settings.attachmentsFolder)
 					.onChange(async value => {
-						this.plugin.settings.attachmentsFolder = folders[value]
+						this.plugin.settings.attachmentsFolder = value
 						await this.plugin.saveSettings()
 					})
 			})
@@ -53,7 +51,7 @@ export class AttachomationSettingTab extends PluginSettingTab {
 				search.setPlaceholder("Select a folder")
 					.setValue(this.plugin.settings.journalAttachmentsFolder)
 					.onChange(async value => {
-						this.plugin.settings.journalAttachmentsFolder = folders[value]
+						this.plugin.settings.journalAttachmentsFolder = value
 						await this.plugin.saveSettings()
 					})
 			})
@@ -66,9 +64,34 @@ export class AttachomationSettingTab extends PluginSettingTab {
 				search.setPlaceholder("Select a folder")
 					.setValue(this.plugin.settings.journalRecordingsFolder)
 					.onChange(async value => {
-						this.plugin.settings.journalRecordingsFolder = folders[value]
+						this.plugin.settings.journalRecordingsFolder = value
 						await this.plugin.saveSettings()
 					})
 			})
+
+		containerEl.createEl("h2", { text: "Cloud Storage" })
+		new Setting(containerEl)
+			.setName("Upload Endpoint")
+			.setDesc("Full URL to POST uploads (e.g. https://example.com/api/upload)")
+			.addText(t => t
+				.setPlaceholder("https://your-vps/api/upload")
+				.setValue(this.plugin.settings.vpsEndpointUrl || "")
+				.onChange(async v => {
+					this.plugin.settings.vpsEndpointUrl = v.trim()
+					await this.plugin.saveSettings()
+				})
+			)
+
+		new Setting(containerEl)
+			.setName("Auth Token")
+			.setDesc("Bearer AUTH token")
+			.addText(t => t
+				.setPlaceholder("token")
+				.setValue(this.plugin.settings.vpsAuthToken || "")
+				.onChange(async v => {
+					this.plugin.settings.vpsAuthToken = v
+					await this.plugin.saveSettings()
+				})
+			)
 	}
 }

@@ -1,9 +1,9 @@
 {
 	"id": "attachomation",
 	"name": "Attachomation",
-	"version": "1.1",
+	"version": "1.2",
 	"minAppVersion": "1.0.0",
-	"description": "Attachomation automates the process of renaming and moving attachments for my journal.",
+	"description": "Attachomation automates the process of renaming, moving and uploading my attachments for my journal.",
 	"author": "Nick Reutlinger",
 	"authorUrl": "https://nickreutlinger.de",
 	"isDesktopOnly": false
