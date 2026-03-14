@@ -1,6 +1,6 @@
 {
 	"name": "attachomation",
-	"version": "1.1",
+	"version": "1.2.1",
 	"description": "Attachomation automates the process of renaming and moving attachments for my journal.",
 	"main": "main.js",
 	"scripts": {

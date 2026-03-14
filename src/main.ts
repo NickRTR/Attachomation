@@ -105,10 +105,16 @@ export default class Attachomation extends Plugin {
 	async getAttachments(entry: TFile, content: string) {
 		const attachments: TFile[] = []
 		const recordings: TFile[] = []
+
 		const isNamedAttachment = (file: TFile) =>
 			file.basename.match(/^[A-Za-z]{3}_\d+$/)
+
+		const isPastedAttachment = (file: TFile) =>
+			file.basename.match(/^Pasted .+/i)
+		
 		const isRecording = (file: TFile) =>
 			file.name.match(/^Recording .+\.m4a$/)
+
 		const askApproval = (file: TFile) =>
 			new Promise<void>((resolve) => {
 				new FileApprovalModal(this.app, file.name, (approved) => {
@@ -116,8 +122,9 @@ export default class Attachomation extends Plugin {
 					resolve()
 				}).open()
 			})
-		const handleFile = async (file: TFile) => {
-			if (isNamedAttachment(file)) attachments.push(file)
+
+		const handleFile = async (file: TFile) => {			
+			if (isNamedAttachment(file) || isPastedAttachment(file)) attachments.push(file)
 			else if (isRecording(file)) recordings.push(file)
 			else await askApproval(file)
 		}
@@ -125,11 +132,12 @@ export default class Attachomation extends Plugin {
 		const wikiEmbeds = [...(content.match(/!\[\[[^\]]+\]\]/g) ?? [])]
 		for (const raw of wikiEmbeds) {
 			const inner = raw.slice(3, -2) // strip ![[ and ]]
-			const file = this.app.vault.getAbstractFileByPath(
-				`${this.settings.attachmentsFolder}/${inner}`,
+			const resolved = this.app.metadataCache.getFirstLinkpathDest(
+				inner,
+				entry.path,
 			)
-			if (file instanceof TFile) {
-				await handleFile(file)
+			if (resolved instanceof TFile) {
+				await handleFile(resolved)
 			}
 		}
 

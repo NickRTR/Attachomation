@@ -26,6 +26,7 @@ export async function replaceEmbedsWithUrls(
 			.slice()
 			.sort((a, b) => b.position.start.offset - a.position.start.offset)
 		for (const e of sorted) {
+			const start = trimBlankLinesAboveEmbed(content, e.position.start.offset)
 			const link = e.link // could be path or basename
 			const targetPath = resolveTargetPath(app, note, link)
 			if (!targetPath) continue
@@ -41,7 +42,7 @@ export async function replaceEmbedsWithUrls(
 					: `[${link}](${url})`
 			content = spliceContent(
 				content,
-				e.position.start.offset,
+				start,
 				e.position.end.offset,
 				replacement,
 			)
@@ -67,6 +68,13 @@ export async function replaceEmbedsWithUrls(
 	}
 
 	await app.vault.modify(note, content)
+}
+
+
+function trimBlankLinesAboveEmbed(content: string, start: number): number {
+	const before = content.slice(0, start)
+	const trimmed = before.replace(/(?:\r?\n[\t ]*){2,}$/, "\n")
+	return trimmed.length
 }
 
 function escapeRegex(s: string): string {
